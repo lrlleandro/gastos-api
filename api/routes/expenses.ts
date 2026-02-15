@@ -38,7 +38,7 @@ const prisma = new PrismaClient();
  *                 type: number
  *               type:
  *                 type: string
- *                 enum: [INCOME, EXPENSE, TRANSFER_IN, TRANSFER_OUT]
+ *                 enum: [INCOME, EXPENSE]
  *                 default: EXPENSE
  *               date:
  *                 type: string
@@ -72,7 +72,7 @@ router.post('/', async (req, res) => {
     if (!category) return res.status(400).json({ error: 'Categoria inválida' });
 
     // Calculate balance update
-    const updateAmount = (type === 'INCOME' || type === 'TRANSFER_IN') ? amount : -amount;
+    const updateAmount = (type === 'INCOME') ? amount : -amount;
 
     // Use transaction to ensure atomicity
     const [expense] = await prisma.$transaction([

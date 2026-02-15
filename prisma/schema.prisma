@@ -26,8 +26,12 @@ model User {
 model Account {
   id              String   @id @default(uuid())
   name            String
+  type            String   @default("checking") // checking, savings, investment, cash, credit_card
   initialBalance  Float    @default(0)
   currentBalance  Float    @default(0)
+  color           String?
+  icon            String?
+  createdAt       DateTime @default(now())
   userId          String
   user            User     @relation(fields: [userId], references: [id])
   expenses        Expense[]
@@ -45,7 +49,7 @@ model Expense {
   id          String   @id @default(uuid())
   description String
   amount      Float
-  type        String   @default("EXPENSE") // INCOME, EXPENSE, TRANSFER_IN, TRANSFER_OUT
+  type        String   @default("EXPENSE") // INCOME or EXPENSE
   transactionDate DateTime
   createdAt   DateTime @default(now())
   userId      String
