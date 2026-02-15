@@ -30,6 +30,9 @@ const prisma = new PrismaClient();
  *             properties:
  *               name:
  *                 type: string
+ *               initialBalance:
+ *                 type: number
+ *                 description: Saldo inicial da conta
  *     responses:
  *       200:
  *         description: A conta criada
@@ -42,7 +45,7 @@ const prisma = new PrismaClient();
  */
 router.post('/', async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, initialBalance } = req.body;
     // @ts-ignore
     const userId = req.user.id;
 
@@ -50,6 +53,8 @@ router.post('/', async (req, res) => {
       data: {
         name,
         userId,
+        initialBalance: initialBalance || 0,
+        currentBalance: initialBalance || 0,
       },
     });
     res.json(account);
@@ -292,6 +297,15 @@ router.post('/transfer', async (req, res) => {
           accountId: sourceAccountId,
         },
       }),
+      // Atualizar saldo da conta de origem (subtrair)
+      prisma.account.update({
+        where: { id: sourceAccountId },
+        data: {
+          currentBalance: {
+            decrement: amount,
+          },
+        },
+      }),
       // Entrada na conta de destino
       prisma.expense.create({
         data: {
@@ -302,6 +316,15 @@ router.post('/transfer', async (req, res) => {
           userId,
           categoryId: transferCategory.id,
           accountId: destinationAccountId,
+        },
+      }),
+      // Atualizar saldo da conta de destino (somar)
+      prisma.account.update({
+        where: { id: destinationAccountId },
+        data: {
+          currentBalance: {
+            increment: amount,
+          },
         },
       }),
     ]);

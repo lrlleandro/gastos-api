@@ -71,17 +71,32 @@ router.post('/', async (req, res) => {
     const category = await prisma.category.findFirst({ where: { id: categoryId, userId } });
     if (!category) return res.status(400).json({ error: 'Categoria inválida' });
 
-    const expense = await prisma.expense.create({
-      data: {
-        description,
-        amount,
-        type: (type || 'EXPENSE').toUpperCase(),
-        transactionDate: new Date(date),
-        userId,
-        categoryId,
-        accountId,
-      },
-    });
+    // Calculate balance update
+    const updateAmount = (type === 'INCOME' || type === 'TRANSFER_IN') ? amount : -amount;
+
+    // Use transaction to ensure atomicity
+    const [expense] = await prisma.$transaction([
+      prisma.expense.create({
+        data: {
+          description,
+          amount,
+          type: (type || 'EXPENSE').toUpperCase(),
+          transactionDate: new Date(date),
+          userId,
+          categoryId,
+          accountId,
+        },
+      }),
+      prisma.account.update({
+        where: { id: accountId },
+        data: {
+          currentBalance: {
+            increment: updateAmount,
+          },
+        },
+      }),
+    ]);
+
     res.json(expense);
   } catch (error) {
     console.error(error);
@@ -99,6 +114,20 @@ router.post('/', async (req, res) => {
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         required: true
+ *         description: Data inicial (YYYY-MM-DD)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         required: true
+ *         description: Data final (YYYY-MM-DD)
+ *       - in: query
  *         name: accountId
  *         schema:
  *           type: string
@@ -113,6 +142,8 @@ router.post('/', async (req, res) => {
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Expense'
+ *       400:
+ *         description: Parâmetros de data obrigatórios
  *       500:
  *         description: Erro no servidor
  */
@@ -120,9 +151,25 @@ router.get('/', async (req, res) => {
   try {
     // @ts-ignore
     const userId = req.user.id;
-    const { accountId } = req.query;
+    const { accountId, startDate, endDate } = req.query;
 
-    const whereClause: any = { userId };
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'Data inicial e final são obrigatórias' });
+    }
+
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
+    // Adjust end date to cover the entire day
+    end.setHours(23, 59, 59, 999);
+
+    const whereClause: any = {
+      userId,
+      transactionDate: {
+        gte: start,
+        lte: end,
+      },
+    };
+
     if (accountId) {
       whereClause.accountId = String(accountId);
     }
@@ -134,9 +181,13 @@ router.get('/', async (req, res) => {
         category: true,
         account: true,
       },
+      orderBy: {
+        transactionDate: 'desc',
+      },
     });
     res.json(expenses);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Falha ao buscar despesas' });
   }
 });

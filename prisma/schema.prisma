@@ -24,11 +24,13 @@ model User {
 }
 
 model Account {
-  id        String   @id @default(uuid())
-  name      String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  expenses  Expense[]
+  id              String   @id @default(uuid())
+  name            String
+  initialBalance  Float    @default(0)
+  currentBalance  Float    @default(0)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  expenses        Expense[]
 }
 
 model Category {
