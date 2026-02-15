@@ -23,7 +23,7 @@ app.use('/expenses', authenticateToken, expensesRouter);
 
 app.get('/', (req, res) => {
   // Ocultar parte da senha para segurança nos logs
-  const dbUrl = process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/:([^:@]+)@/, ':****@') : 'Não definida';
+  const dbUrl = process.env.DATABASE_URL_PRD ? process.env.DATABASE_URL_PRD.replace(/:([^:@]+)@/, ':****@') : 'Não definida';
   res.send(`Gastos API is running. DB URL: ${dbUrl}`);
 });
 
