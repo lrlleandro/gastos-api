@@ -22,7 +22,9 @@ app.use('/categories', authenticateToken, categoriesRouter);
 app.use('/expenses', authenticateToken, expensesRouter);
 
 app.get('/', (req, res) => {
-  res.send('Gastos API is running');
+  // Ocultar parte da senha para segurança nos logs
+  const dbUrl = process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/:([^:@]+)@/, ':****@') : 'Não definida';
+  res.send(`Gastos API is running. DB URL: ${dbUrl}`);
 });
 
 app.listen(port, () => {
