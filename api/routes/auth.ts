@@ -91,6 +91,7 @@ router.post('/register', async (req, res) => {
             { name: 'Educação' },
             { name: 'Salário' },
             { name: 'Outros' },
+            { name: 'Transferência' },
           ],
         },
       },
