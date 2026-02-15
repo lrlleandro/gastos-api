@@ -11,8 +11,16 @@ import expensesRouter from './routes/expenses';
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: '*', // Permite qualquer origem (para teste)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
+
+// Log de verificação na inicialização
+const dbUrlCheck = process.env.DATABASE_URL_PRD ? 'Definida' : 'NÃO DEFINIDA';
+console.log(`Inicializando API... Variável DATABASE_URL_PRD está: ${dbUrlCheck}`);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
