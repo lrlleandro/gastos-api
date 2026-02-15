@@ -118,6 +118,7 @@ router.post('/', async (req, res) => {
  *         schema:
  *           type: string
  *           format: date
+ *           example: "2026-01-01"
  *         required: true
  *         description: Data inicial (YYYY-MM-DD)
  *       - in: query
@@ -125,12 +126,14 @@ router.post('/', async (req, res) => {
  *         schema:
  *           type: string
  *           format: date
+ *           example: "2026-01-30"
  *         required: true
  *         description: Data final (YYYY-MM-DD)
  *       - in: query
  *         name: accountId
  *         schema:
  *           type: string
+ *           example: "c4a3c440-829d-4db9-afae-6891ef8fbd08"
  *         required: false
  *         description: ID da conta para filtrar despesas
  *     responses:
@@ -159,6 +162,15 @@ router.get('/', async (req, res) => {
 
     const start = new Date(startDate as string);
     const end = new Date(endDate as string);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Datas inválidas' });
+    }
+
+    if (start > end) {
+      return res.status(400).json({ error: 'Data inicial não pode ser maior que a final' });
+    }
+
     // Adjust end date to cover the entire day
     end.setHours(23, 59, 59, 999);
 

@@ -3,10 +3,13 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
+import { OAuth2Client } from 'google-auth-library';
 
 const router = Router();
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
+const GOOGLE_WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID;
+const googleClient = new OAuth2Client(GOOGLE_WEB_CLIENT_ID);
 
 // Configuração do Nodemailer
 const transporter = nodemailer.createTransport({
@@ -237,6 +240,10 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'E-mail não verificado. Por favor, verifique sua caixa de entrada.' });
     }
 
+    if (!user.password) {
+      return res.status(400).json({ error: 'Este usuário utiliza login social (Google). Por favor, faça login via Google.' });
+    }
+
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return res.status(400).json({ error: 'Credenciais inválidas' });
@@ -250,10 +257,141 @@ router.post('/login', async (req, res) => {
       id: user.id,
       name: user.name,
       email: user.email,
+      avatar: user.avatar,
       token,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to login' });
+  }
+});
+
+/**
+ * @swagger
+ * /auth/google:
+ *   post:
+ *     summary: Login com Google
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - idToken
+ *             properties:
+ *               idToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login realizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     avatar:
+ *                       type: string
+ *       400:
+ *         description: Token inválido
+ */
+router.post('/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!GOOGLE_WEB_CLIENT_ID) {
+      return res.status(500).json({ error: 'Google Client ID não configurado no servidor' });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: GOOGLE_WEB_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(400).json({ error: 'Token Google inválido' });
+    }
+
+    const { email, name, picture, sub: googleId, email_verified } = payload;
+
+    if (!email_verified) {
+      return res.status(400).json({ error: 'Email do Google não verificado' });
+    }
+
+    if (!email) {
+       return res.status(400).json({ error: 'Email não fornecido pelo Google' });
+    }
+
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          name: name || 'Usuário Google',
+          email,
+          googleId,
+          avatar: picture,
+          isVerified: true,
+          password: null,
+          accounts: {
+            create: {
+              name: 'Carteira',
+            },
+          },
+          categories: {
+            create: [
+              { name: 'Alimentação' },
+              { name: 'Transporte' },
+              { name: 'Moradia' },
+              { name: 'Lazer' },
+              { name: 'Saúde' },
+              { name: 'Educação' },
+              { name: 'Salário' },
+              { name: 'Outros' },
+              { name: 'Transferência' },
+            ],
+          },
+        },
+      });
+    } else {
+      // Atualizar info do Google se necessário (opcional, mas bom para manter atualizado)
+      if (!user.googleId) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { googleId, avatar: picture, isVerified: true }, // Auto-verify if google says so
+        });
+      }
+    }
+
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
+      expiresIn: '1h',
+    });
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      },
+    });
+
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(401).json({ error: 'Token Google inválido ou expirado' });
   }
 });
 
