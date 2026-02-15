@@ -10,10 +10,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 
 // Configuração do Nodemailer
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Use o serviço de e-mail que preferir (ex: Gmail, Outlook, etc)
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // true para 465, false para outras portas
   auth: {
-    user: process.env.EMAIL_USER, // Seu e-mail
-    pass: process.env.EMAIL_PASS, // Sua senha de aplicativo
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
