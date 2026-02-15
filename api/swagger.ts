@@ -58,7 +58,7 @@ const options = {
             id: { type: 'string' },
             description: { type: 'string' },
             amount: { type: 'number' },
-            type: { type: 'string', enum: ['INCOME', 'EXPENSE'] },
+            type: { type: 'string', enum: ['INCOME', 'EXPENSE', 'TRANSFER_IN', 'TRANSFER_OUT'] },
             transactionDate: { type: 'string', format: 'date-time' },
             createdAt: { type: 'string', format: 'date-time' },
             userId: { type: 'string' },

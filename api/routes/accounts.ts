@@ -285,7 +285,7 @@ router.post('/transfer', async (req, res) => {
         data: {
           description: description || `Transferência para ${destinationAccount.name}`,
           amount: amount,
-          type: 'EXPENSE',
+          type: 'TRANSFER_OUT',
           transactionDate: new Date(date),
           userId,
           categoryId: transferCategory.id,
@@ -297,7 +297,7 @@ router.post('/transfer', async (req, res) => {
         data: {
           description: description || `Transferência de ${sourceAccount.name}`,
           amount: amount,
-          type: 'INCOME',
+          type: 'TRANSFER_IN',
           transactionDate: new Date(date),
           userId,
           categoryId: transferCategory.id,
@@ -354,7 +354,7 @@ router.get('/balance', async (req, res) => {
 
     const balances = accounts.map((account) => {
       const balance = account.expenses.reduce((acc, expense) => {
-        if (expense.type === 'INCOME') {
+        if (expense.type === 'INCOME' || expense.type === 'TRANSFER_IN') {
           return acc + expense.amount;
         } else {
           return acc - expense.amount;
@@ -455,7 +455,7 @@ router.get('/balance/:id', async (req, res) => {
     }
 
     const balance = account.expenses.reduce((acc, expense) => {
-      if (expense.type === 'INCOME') {
+      if (expense.type === 'INCOME' || expense.type === 'TRANSFER_IN') {
         return acc + expense.amount;
       } else {
         return acc - expense.amount;
