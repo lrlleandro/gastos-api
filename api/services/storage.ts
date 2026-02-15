@@ -1,21 +1,27 @@
-import { createClient } from '@supabase/supabase-js';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const ACCESS_KEY_ID = process.env.SUPABASE_ACCESS_KEY_ID;
+// The user provided the secret key in SUPABASE_KEY
+const SECRET_ACCESS_KEY = process.env.SUPABASE_KEY;
 const BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME || 'receipts';
+const SUPABASE_URL = process.env.SUPABASE_URL;
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  throw new Error('Supabase URL and Key are required');
+if (!ACCESS_KEY_ID || !SECRET_ACCESS_KEY || !SUPABASE_URL) {
+  throw new Error('Supabase S3 credentials are required (URL, ACCESS_KEY_ID, KEY)');
 }
 
-// Ensure the key is used as the service role key or anon key properly
-// If using the service role key for backend operations, we can bypass RLS
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false
-  }
+// Extract project ref from URL (e.g., https://sgktcjcmegtyoabfasrd.supabase.co -> sgktcjcmegtyoabfasrd)
+const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
+const endpoint = `https://${projectRef}.storage.supabase.co/storage/v1/s3`;
+
+const s3Client = new S3Client({
+  forcePathStyle: true,
+  region: 'us-east-1', // Arbitrary region for Supabase
+  endpoint: endpoint,
+  credentials: {
+    accessKeyId: ACCESS_KEY_ID,
+    secretAccessKey: SECRET_ACCESS_KEY,
+  },
 });
 
 export const uploadFile = async (file: Express.Multer.File, userId: string): Promise<string | null> => {
@@ -23,25 +29,23 @@ export const uploadFile = async (file: Express.Multer.File, userId: string): Pro
     const fileExt = file.originalname.split('.').pop();
     const fileName = `${userId}/${Date.now()}.${fileExt}`;
 
-    const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(fileName, file.buffer, {
-        contentType: file.mimetype,
-        upsert: true,
-      });
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      // ACL: 'public-read', // Supabase usually manages access via policies, but public buckets are readable
+    });
 
-    if (error) {
-      console.error('Supabase upload error:', error);
-      throw error;
-    }
+    await s3Client.send(command);
 
-    const { data: publicUrlData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(fileName);
+    // Construct public URL manually
+    // Format: https://<project_ref>.supabase.co/storage/v1/object/public/<bucket>/<key>
+    const publicUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/${BUCKET_NAME}/${fileName}`;
 
-    return publicUrlData.publicUrl;
+    return publicUrl;
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error uploading file to S3:', error);
     throw error;
   }
 };
