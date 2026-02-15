@@ -44,7 +44,8 @@ model Expense {
   description String
   amount      Float
   type        String   @default("EXPENSE") // INCOME or EXPENSE
-  date        DateTime @default(now())
+  transactionDate DateTime
+  createdAt   DateTime @default(now())
   userId      String
   user        User     @relation(fields: [userId], references: [id])
   categoryId  String

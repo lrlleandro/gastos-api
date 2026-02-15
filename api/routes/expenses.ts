@@ -30,6 +30,7 @@ const prisma = new PrismaClient();
  *               - amount
  *               - categoryId
  *               - accountId
+ *               - date
  *             properties:
  *               description:
  *                 type: string
@@ -39,6 +40,10 @@ const prisma = new PrismaClient();
  *                 type: string
  *                 enum: [INCOME, EXPENSE]
  *                 default: EXPENSE
+ *               date:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Data da transação (ISO 8601)
  *               categoryId:
  *                 type: string
  *               accountId:
@@ -55,7 +60,7 @@ const prisma = new PrismaClient();
  */
 router.post('/', async (req, res) => {
   try {
-    const { description, amount, type, categoryId, accountId } = req.body;
+    const { description, amount, type, date, categoryId, accountId } = req.body;
     // @ts-ignore
     const userId = req.user.id;
 
@@ -71,6 +76,7 @@ router.post('/', async (req, res) => {
         description,
         amount,
         type: type || 'EXPENSE',
+        transactionDate: new Date(date),
         userId,
         categoryId,
         accountId,
@@ -147,9 +153,14 @@ router.get('/', async (req, res) => {
  *                 type: string
  *               amount:
  *                 type: number
+ *               date:
+ *                 type: string
+ *                 format: date-time
  *               userId:
  *                 type: string
  *               categoryId:
+ *                 type: string
+ *               accountId:
  *                 type: string
  *     responses:
  *       200:
@@ -164,14 +175,16 @@ router.get('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, amount, userId, categoryId } = req.body;
+    const { description, amount, date, userId, categoryId, accountId } = req.body;
     const expense = await prisma.expense.update({
       where: { id },
       data: {
         description,
         amount,
+        transactionDate: date ? new Date(date) : undefined,
         userId,
         categoryId,
+        accountId,
       },
     });
     res.json(expense);
