@@ -203,9 +203,9 @@ router.delete('/:id', async (req, res) => {
 
 /**
  * @swagger
- * /accounts/transfer:
+ * /accounts/balances:
  *   post:
- *     summary: Realiza transferência entre contas
+ *     summary: Calcula o saldo de múltiplas contas em um período
  *     tags: [Accounts]
  *     security:
  *       - bearerAuth: []
@@ -216,137 +216,23 @@ router.delete('/:id', async (req, res) => {
  *           schema:
  *             type: object
  *             required:
- *               - sourceAccountId
- *               - destinationAccountId
- *               - amount
- *               - date
+ *               - accountIds
+ *               - startDate
+ *               - endDate
  *             properties:
- *               sourceAccountId:
+ *               accountIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               startDate:
  *                 type: string
- *                 description: ID da conta de origem
- *               destinationAccountId:
+ *                 format: date
+ *               endDate:
  *                 type: string
- *                 description: ID da conta de destino
- *               amount:
- *                 type: number
- *                 description: Valor da transferência
- *               date:
- *                 type: string
- *                 format: date-time
- *                 description: Data da transferência
- *               description:
- *                 type: string
- *                 description: Descrição opcional (padrão: "Transferência")
+ *                 format: date
  *     responses:
  *       200:
- *         description: Transferência realizada com sucesso
- *       400:
- *         description: Erro na requisição (contas inválidas, saldo insuficiente, etc)
- *       500:
- *         description: Erro no servidor
- */
-router.post('/transfer', async (req, res) => {
-  try {
-    const { sourceAccountId, destinationAccountId, amount, date, description } = req.body;
-    // @ts-ignore
-    const userId = req.user.id;
-
-    if (sourceAccountId === destinationAccountId) {
-      return res.status(400).json({ error: 'Conta de origem e destino devem ser diferentes' });
-    }
-
-    if (amount <= 0) {
-      return res.status(400).json({ error: 'Valor deve ser maior que zero' });
-    }
-
-    // Verificar se as contas pertencem ao usuário
-    const sourceAccount = await prisma.account.findFirst({
-      where: { id: sourceAccountId, userId },
-    });
-
-    const destinationAccount = await prisma.account.findFirst({
-      where: { id: destinationAccountId, userId },
-    });
-
-    if (!sourceAccount || !destinationAccount) {
-      return res.status(400).json({ error: 'Conta de origem ou destino inválida' });
-    }
-
-    // Encontrar ou criar categoria de Transferência
-    let transferCategory = await prisma.category.findFirst({
-      where: { name: 'Transferência', userId },
-    });
-
-    if (!transferCategory) {
-      transferCategory = await prisma.category.create({
-        data: { name: 'Transferência', userId },
-      });
-    }
-
-    // Realizar a transação atômica (criar despesa na origem e receita no destino)
-    await prisma.$transaction([
-      // Saída da conta de origem
-      prisma.expense.create({
-        data: {
-          description: description || `Transferência para ${destinationAccount.name}`,
-          amount: amount,
-          type: 'TRANSFER_OUT',
-          transactionDate: new Date(date),
-          userId,
-          categoryId: transferCategory.id,
-          accountId: sourceAccountId,
-        },
-      }),
-      // Atualizar saldo da conta de origem (subtrair)
-      prisma.account.update({
-        where: { id: sourceAccountId },
-        data: {
-          currentBalance: {
-            decrement: amount,
-          },
-        },
-      }),
-      // Entrada na conta de destino
-      prisma.expense.create({
-        data: {
-          description: description || `Transferência de ${sourceAccount.name}`,
-          amount: amount,
-          type: 'TRANSFER_IN',
-          transactionDate: new Date(date),
-          userId,
-          categoryId: transferCategory.id,
-          accountId: destinationAccountId,
-        },
-      }),
-      // Atualizar saldo da conta de destino (somar)
-      prisma.account.update({
-        where: { id: destinationAccountId },
-        data: {
-          currentBalance: {
-            increment: amount,
-          },
-        },
-      }),
-    ]);
-
-    res.json({ message: 'Transferência realizada com sucesso' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Falha ao realizar transferência' });
-  }
-});
-
-/**
- * @swagger
- * /accounts/balance:
- *   get:
- *     summary: Retorna o saldo de todas as contas
- *     tags: [Accounts]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Saldo das contas
+ *         description: A lista de contas com saldos calculados
  *         content:
  *           application/json:
  *             schema:
@@ -358,42 +244,116 @@ router.post('/transfer', async (req, res) => {
  *                     type: string
  *                   accountName:
  *                     type: string
- *                   balance:
+ *                   openingBalance:
  *                     type: number
+ *                     description: Saldo no início da data inicial
+ *                   closingBalance:
+ *                     type: number
+ *                     description: Saldo no final da data final
+ *                   periodNet:
+ *                     type: number
+ *                     description: Variação no período
  *       500:
  *         description: Erro no servidor
  */
-router.get('/balance', async (req, res) => {
+router.post('/balances', async (req, res) => {
   try {
+    const { accountIds, startDate, endDate } = req.body;
     // @ts-ignore
     const userId = req.user.id;
 
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'Data inicial e final são obrigatórias' });
+    }
+
+    if (!accountIds || !Array.isArray(accountIds) || accountIds.length === 0) {
+      return res.status(400).json({ error: 'Lista de contas inválida' });
+    }
+
+    // 1. Fetch current balances
     const accounts = await prisma.account.findMany({
-      where: { userId },
-      include: {
-        expenses: true,
+      where: {
+        id: { in: accountIds },
+        userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        currentBalance: true,
       },
     });
 
-    const balances = accounts.map((account) => {
-      const balance = account.expenses.reduce((acc, expense) => {
-        if (expense.type === 'INCOME' || expense.type === 'TRANSFER_IN') {
-          return acc + expense.amount;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // 2. Aggregate future transactions (after endDate)
+    const futureTransactions = await prisma.expense.groupBy({
+      by: ['accountId', 'type'],
+      where: {
+        accountId: { in: accountIds },
+        userId,
+        transactionDate: { gt: end },
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    // 3. Aggregate period transactions (startDate to endDate)
+    const periodTransactions = await prisma.expense.groupBy({
+      by: ['accountId', 'type'],
+      where: {
+        accountId: { in: accountIds },
+        userId,
+        transactionDate: {
+          gte: start,
+          lte: end,
+        },
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    // Helper to get net amount from aggregation
+    const getNetChange = (aggs: any[], accId: string) => {
+      let net = 0;
+      const accountAggs = aggs.filter((a) => a.accountId === accId);
+      for (const agg of accountAggs) {
+        const amount = agg._sum.amount || 0;
+        if (agg.type === 'INCOME' || agg.type === 'TRANSFER_IN') {
+          net += amount;
         } else {
-          return acc - expense.amount;
+          net -= amount;
         }
-      }, 0);
+      }
+      return net;
+    };
+
+    const results = accounts.map((account) => {
+      const futureNet = getNetChange(futureTransactions, account.id);
+      const periodNet = getNetChange(periodTransactions, account.id);
+
+      // closingBalance = currentBalance - futureNet
+      const closingBalance = account.currentBalance - futureNet;
+
+      // openingBalance = closingBalance - periodNet
+      const openingBalance = closingBalance - periodNet;
 
       return {
         accountId: account.id,
         accountName: account.name,
-        balance,
+        openingBalance,
+        closingBalance,
+        periodNet,
       };
     });
 
-    res.json(balances);
+    res.json(results);
   } catch (error) {
-    res.status(500).json({ error: 'Falha ao buscar saldo das contas' });
+    console.error(error);
+    res.status(500).json({ error: 'Falha ao calcular saldos' });
   }
 });
 
