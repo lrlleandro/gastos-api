@@ -10,6 +10,10 @@ const options = {
     },
     servers: [
       {
+        url: 'https://gastos-api-production-5e6a.up.railway.app',
+        description: 'Servidor de Produção',
+      },
+      {
         url: 'http://localhost:3000',
         description: 'Servidor Local',
       },
