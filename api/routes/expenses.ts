@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
+import multer from 'multer';
+import { uploadFile } from '../services/storage';
 
 const router = Router();
 const prisma = new PrismaClient();
+const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @swagger
@@ -22,7 +25,7 @@ const prisma = new PrismaClient();
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -48,6 +51,10 @@ const prisma = new PrismaClient();
  *                 type: string
  *               accountId:
  *                 type: string
+ *               receipt:
+ *                 type: string
+ *                 format: binary
+ *                 description: Comprovante da transação
  *     responses:
  *       200:
  *         description: A despesa criada
@@ -58,11 +65,12 @@ const prisma = new PrismaClient();
  *       500:
  *         description: Erro no servidor
  */
-router.post('/', async (req, res) => {
+router.post('/', upload.single('receipt'), async (req, res) => {
   try {
     const { description, amount, type, date, categoryId, accountId } = req.body;
     // @ts-ignore
     const userId = req.user.id;
+    const file = req.file;
 
     // Verify ownership of account and category
     const account = await prisma.account.findFirst({ where: { id: accountId, userId } });
@@ -71,20 +79,28 @@ router.post('/', async (req, res) => {
     const category = await prisma.category.findFirst({ where: { id: categoryId, userId } });
     if (!category) return res.status(400).json({ error: 'Categoria inválida' });
 
+    let receiptUrl = null;
+    if (file) {
+      receiptUrl = await uploadFile(file, userId);
+    }
+
     // Calculate balance update
-    const updateAmount = (type === 'INCOME') ? amount : -amount;
+    // amount comes as string from multipart/form-data
+    const amountFloat = parseFloat(amount);
+    const updateAmount = (type === 'INCOME') ? amountFloat : -amountFloat;
 
     // Use transaction to ensure atomicity
     const [expense] = await prisma.$transaction([
       prisma.expense.create({
         data: {
           description,
-          amount,
+          amount: amountFloat,
           type: (type || 'EXPENSE').toUpperCase(),
           transactionDate: new Date(date),
           userId,
           categoryId,
           accountId,
+          receiptUrl,
         },
       }),
       prisma.account.update({
