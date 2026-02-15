@@ -10,7 +10,7 @@ const options = {
     },
     servers: [
       {
-        url: 'https://gastos-api-production-5e6a.up.railway.app',
+        url: 'https://gastos-api-production-986e.up.railway.app',
         description: 'Servidor de Produção',
       },
       {
