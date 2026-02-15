@@ -202,9 +202,13 @@ router.get('/verify', async (req, res) => {
  *             schema:
  *               type: object
  *               properties:
- *                 token:
+ *                 id:
  *                   type: string
  *                 name:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                 token:
  *                   type: string
  *       400:
  *         description: Credenciais inválidas ou e-mail não verificado
@@ -231,7 +235,12 @@ router.post('/login', async (req, res) => {
       expiresIn: '1h',
     });
 
-    res.json({ token, name: user.name });
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      token,
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to login' });
   }
