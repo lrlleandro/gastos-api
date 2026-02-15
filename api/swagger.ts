@@ -41,6 +41,15 @@ const options = {
           properties: {
             id: { type: 'string' },
             name: { type: 'string' },
+            userId: { type: 'string' },
+          },
+        },
+        Account: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            name: { type: 'string' },
+            userId: { type: 'string' },
           },
         },
         Expense: {
@@ -49,9 +58,11 @@ const options = {
             id: { type: 'string' },
             description: { type: 'string' },
             amount: { type: 'number' },
+            type: { type: 'string', enum: ['INCOME', 'EXPENSE'] },
             date: { type: 'string', format: 'date-time' },
             userId: { type: 'string' },
             categoryId: { type: 'string' },
+            accountId: { type: 'string' },
           },
         },
       },

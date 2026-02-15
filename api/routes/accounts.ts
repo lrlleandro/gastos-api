@@ -7,16 +7,16 @@ const prisma = new PrismaClient();
 /**
  * @swagger
  * tags:
- *   name: Categories
- *   description: API para gerenciamento de categorias
+ *   name: Accounts
+ *   description: API para gerenciamento de contas
  */
 
 /**
  * @swagger
- * /categories:
+ * /accounts:
  *   post:
- *     summary: Cria uma nova categoria
- *     tags: [Categories]
+ *     summary: Cria uma nova conta
+ *     tags: [Accounts]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -32,11 +32,11 @@ const prisma = new PrismaClient();
  *                 type: string
  *     responses:
  *       200:
- *         description: A categoria criada
+ *         description: A conta criada
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Category'
+ *               $ref: '#/components/schemas/Account'
  *       500:
  *         description: Erro no servidor
  */
@@ -46,32 +46,35 @@ router.post('/', async (req, res) => {
     // @ts-ignore
     const userId = req.user.id;
 
-    const category = await prisma.category.create({
-      data: { name, userId },
+    const account = await prisma.account.create({
+      data: {
+        name,
+        userId,
+      },
     });
-    res.json(category);
+    res.json(account);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create category' });
+    res.status(500).json({ error: 'Failed to create account' });
   }
 });
 
 /**
  * @swagger
- * /categories:
+ * /accounts:
  *   get:
- *     summary: Retorna a lista de todas as categorias do usuário
- *     tags: [Categories]
+ *     summary: Retorna a lista de todas as contas do usuário
+ *     tags: [Accounts]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: A lista de categorias
+ *         description: A lista de contas
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Category'
+ *                 $ref: '#/components/schemas/Account'
  *       500:
  *         description: Erro no servidor
  */
@@ -79,21 +82,21 @@ router.get('/', async (req, res) => {
   try {
     // @ts-ignore
     const userId = req.user.id;
-    const categories = await prisma.category.findMany({
+    const accounts = await prisma.account.findMany({
       where: { userId },
     });
-    res.json(categories);
+    res.json(accounts);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch categories' });
+    res.status(500).json({ error: 'Failed to fetch accounts' });
   }
 });
 
 /**
  * @swagger
- * /categories/{id}:
+ * /accounts/{id}:
  *   put:
- *     summary: Atualiza uma categoria existente
- *     tags: [Categories]
+ *     summary: Atualiza uma conta existente
+ *     tags: [Accounts]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -102,7 +105,7 @@ router.get('/', async (req, res) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: ID da categoria
+ *         description: ID da conta
  *     requestBody:
  *       required: true
  *       content:
@@ -114,11 +117,11 @@ router.get('/', async (req, res) => {
  *                 type: string
  *     responses:
  *       200:
- *         description: A categoria atualizada
+ *         description: A conta atualizada
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Category'
+ *               $ref: '#/components/schemas/Account'
  *       500:
  *         description: Erro no servidor
  */
@@ -126,22 +129,34 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
-    const category = await prisma.category.update({
+    // @ts-ignore
+    const userId = req.user.id;
+
+    // Verify ownership
+    const existingAccount = await prisma.account.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existingAccount) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    const account = await prisma.account.update({
       where: { id },
       data: { name },
     });
-    res.json(category);
+    res.json(account);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update category' });
+    res.status(500).json({ error: 'Failed to update account' });
   }
 });
 
 /**
  * @swagger
- * /categories/{id}:
+ * /accounts/{id}:
  *   delete:
- *     summary: Deleta uma categoria
- *     tags: [Categories]
+ *     summary: Deleta uma conta
+ *     tags: [Accounts]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -150,22 +165,34 @@ router.put('/:id', async (req, res) => {
  *         schema:
  *           type: string
  *         required: true
- *         description: ID da categoria
+ *         description: ID da conta
  *     responses:
  *       200:
- *         description: Categoria deletada com sucesso
+ *         description: Conta deletada com sucesso
  *       500:
  *         description: Erro no servidor
  */
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.category.delete({
+    // @ts-ignore
+    const userId = req.user.id;
+
+    // Verify ownership
+    const existingAccount = await prisma.account.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existingAccount) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    await prisma.account.delete({
       where: { id },
     });
-    res.json({ message: 'Category deleted successfully' });
+    res.json({ message: 'Account deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete category' });
+    res.status(500).json({ error: 'Failed to delete account' });
   }
 });
 

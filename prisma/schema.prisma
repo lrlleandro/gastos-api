@@ -18,11 +18,23 @@ model User {
   password  String
   createdAt DateTime @default(now())
   expenses  Expense[]
+  accounts  Account[]
+  categories Category[]
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expenses  Expense[]
 }
 
 model Category {
   id        String   @id @default(uuid())
-  name      String   @unique
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
   expenses  Expense[]
 }
 
@@ -30,9 +42,12 @@ model Expense {
   id          String   @id @default(uuid())
   description String
   amount      Float
+  type        String   @default("EXPENSE") // INCOME or EXPENSE
   date        DateTime @default(now())
   userId      String
   user        User     @relation(fields: [userId], references: [id])
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id])
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id])
 }

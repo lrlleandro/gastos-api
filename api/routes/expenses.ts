@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
  * @swagger
  * /expenses:
  *   post:
- *     summary: Cria uma nova despesa
+ *     summary: Cria uma nova despesa/receita
  *     tags: [Expenses]
  *     security:
  *       - bearerAuth: []
@@ -28,16 +28,20 @@ const prisma = new PrismaClient();
  *             required:
  *               - description
  *               - amount
- *               - userId
  *               - categoryId
+ *               - accountId
  *             properties:
  *               description:
  *                 type: string
  *               amount:
  *                 type: number
- *               userId:
+ *               type:
  *                 type: string
+ *                 enum: [INCOME, EXPENSE]
+ *                 default: EXPENSE
  *               categoryId:
+ *                 type: string
+ *               accountId:
  *                 type: string
  *     responses:
  *       200:
@@ -51,13 +55,25 @@ const prisma = new PrismaClient();
  */
 router.post('/', async (req, res) => {
   try {
-    const { description, amount, userId, categoryId } = req.body;
+    const { description, amount, type, categoryId, accountId } = req.body;
+    // @ts-ignore
+    const userId = req.user.id;
+
+    // Verify ownership of account and category
+    const account = await prisma.account.findFirst({ where: { id: accountId, userId } });
+    if (!account) return res.status(400).json({ error: 'Invalid account' });
+
+    const category = await prisma.category.findFirst({ where: { id: categoryId, userId } });
+    if (!category) return res.status(400).json({ error: 'Invalid category' });
+
     const expense = await prisma.expense.create({
       data: {
         description,
         amount,
+        type: type || 'EXPENSE',
         userId,
         categoryId,
+        accountId,
       },
     });
     res.json(expense);
@@ -71,7 +87,7 @@ router.post('/', async (req, res) => {
  * @swagger
  * /expenses:
  *   get:
- *     summary: Retorna a lista de todas as despesas
+ *     summary: Retorna a lista de todas as despesas do usuário
  *     tags: [Expenses]
  *     security:
  *       - bearerAuth: []
@@ -89,10 +105,14 @@ router.post('/', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
+    // @ts-ignore
+    const userId = req.user.id;
     const expenses = await prisma.expense.findMany({
+      where: { userId },
       include: {
         user: true,
         category: true,
+        account: true,
       },
     });
     res.json(expenses);

@@ -7,6 +7,7 @@ import { authenticateToken } from './middleware/auth';
 import usersRouter from './routes/users';
 import categoriesRouter from './routes/categories';
 import expensesRouter from './routes/expenses';
+import accountsRouter from './routes/accounts';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -24,6 +25,7 @@ app.use('/auth', authRouter);
 app.use('/users', authenticateToken, usersRouter);
 app.use('/categories', authenticateToken, categoriesRouter);
 app.use('/expenses', authenticateToken, expensesRouter);
+app.use('/accounts', authenticateToken, accountsRouter);
 
 app.get('/', (req, res) => {
   res.send('Gastos API is running');
