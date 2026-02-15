@@ -66,6 +66,19 @@ const options = {
             accountId: { type: 'string' },
           },
         },
+        Error: {
+          type: 'object',
+          properties: {
+            error: {
+              type: 'string',
+              description: 'Mensagem de erro principal',
+            },
+            details: {
+              type: 'string',
+              description: 'Detalhes técnicos ou adicionais do erro (opcional)',
+            },
+          },
+        },
       },
     },
   },

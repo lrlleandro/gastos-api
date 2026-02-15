@@ -53,7 +53,11 @@ const transporter = nodemailer.createTransport({
  *       200:
  *         description: Usuário registrado. Verifique seu e-mail para confirmar.
  *       400:
- *         description: Email já existe
+ *         description: Erro na requisição
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/register', async (req, res) => {
   try {
@@ -214,6 +218,10 @@ router.get('/verify', async (req, res) => {
  *                   type: string
  *       400:
  *         description: Credenciais inválidas ou e-mail não verificado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/login', async (req, res) => {
   try {
