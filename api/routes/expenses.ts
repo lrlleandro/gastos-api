@@ -66,10 +66,10 @@ router.post('/', async (req, res) => {
 
     // Verify ownership of account and category
     const account = await prisma.account.findFirst({ where: { id: accountId, userId } });
-    if (!account) return res.status(400).json({ error: 'Invalid account' });
+    if (!account) return res.status(400).json({ error: 'Conta inválida' });
 
     const category = await prisma.category.findFirst({ where: { id: categoryId, userId } });
-    if (!category) return res.status(400).json({ error: 'Invalid category' });
+    if (!category) return res.status(400).json({ error: 'Categoria inválida' });
 
     const expense = await prisma.expense.create({
       data: {
@@ -85,7 +85,7 @@ router.post('/', async (req, res) => {
     res.json(expense);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to create expense' });
+    res.status(500).json({ error: 'Falha ao criar despesa' });
   }
 });
 
@@ -123,7 +123,7 @@ router.get('/', async (req, res) => {
     });
     res.json(expenses);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch expenses' });
+    res.status(500).json({ error: 'Falha ao buscar despesas' });
   }
 });
 
@@ -189,7 +189,7 @@ router.put('/:id', async (req, res) => {
     });
     res.json(expense);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update expense' });
+    res.status(500).json({ error: 'Falha ao atualizar despesa' });
   }
 });
 
@@ -220,9 +220,9 @@ router.delete('/:id', async (req, res) => {
     await prisma.expense.delete({
       where: { id },
     });
-    res.json({ message: 'Expense deleted successfully' });
+    res.json({ message: 'Despesa deletada com sucesso' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete expense' });
+    res.status(500).json({ error: 'Falha ao deletar despesa' });
   }
 });
 

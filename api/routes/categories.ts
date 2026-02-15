@@ -51,7 +51,7 @@ router.post('/', async (req, res) => {
     });
     res.json(category);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create category' });
+    res.status(500).json({ error: 'Falha ao criar categoria' });
   }
 });
 
@@ -84,7 +84,7 @@ router.get('/', async (req, res) => {
     });
     res.json(categories);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch categories' });
+    res.status(500).json({ error: 'Falha ao buscar categorias' });
   }
 });
 
@@ -132,7 +132,7 @@ router.put('/:id', async (req, res) => {
     });
     res.json(category);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update category' });
+    res.status(500).json({ error: 'Falha ao atualizar categoria' });
   }
 });
 
@@ -163,9 +163,9 @@ router.delete('/:id', async (req, res) => {
     await prisma.category.delete({
       where: { id },
     });
-    res.json({ message: 'Category deleted successfully' });
+    res.json({ message: 'Categoria deletada com sucesso' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete category' });
+    res.status(500).json({ error: 'Falha ao deletar categoria' });
   }
 });
 

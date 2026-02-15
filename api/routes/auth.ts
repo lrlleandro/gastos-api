@@ -65,7 +65,7 @@ router.post('/register', async (req, res) => {
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: 'Email already exists' });
+      return res.status(400).json({ error: 'E-mail já cadastrado' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -124,10 +124,10 @@ router.post('/register', async (req, res) => {
       }
     });
 
-    res.json({ message: 'User registered. Please check your email to verify your account.' });
+    res.json({ message: 'Usuário registrado. Por favor, verifique seu e-mail para confirmar a conta.' });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ error: 'Failed to register user', details: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({ error: 'Falha ao registrar usuário', details: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -155,18 +155,18 @@ router.get('/verify', async (req, res) => {
     const { token } = req.query;
 
     if (!token || typeof token !== 'string') {
-      return res.status(400).json({ error: 'Invalid token' });
+      return res.status(400).json({ error: 'Token inválido' });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as { email: string };
     const user = await prisma.user.findUnique({ where: { email: decoded.email } });
 
     if (!user) {
-      return res.status(400).json({ error: 'User not found' });
+      return res.status(400).json({ error: 'Usuário não encontrado' });
     }
 
     if (user.isVerified) {
-      return res.json({ message: 'Email already verified' });
+      return res.json({ message: 'E-mail já verificado' });
     }
 
     await prisma.user.update({
@@ -176,7 +176,7 @@ router.get('/verify', async (req, res) => {
 
     res.send('<h1>E-mail verificado com sucesso! Agora você pode fazer login.</h1>');
   } catch (error) {
-    res.status(400).json({ error: 'Invalid or expired token' });
+    res.status(400).json({ error: 'Token inválido ou expirado' });
   }
 });
 
@@ -229,16 +229,16 @@ router.post('/login', async (req, res) => {
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      return res.status(400).json({ error: 'Credenciais inválidas' });
     }
 
     if (!user.isVerified) {
-      return res.status(403).json({ error: 'Email not verified. Please check your email inbox.' });
+      return res.status(403).json({ error: 'E-mail não verificado. Por favor, verifique sua caixa de entrada.' });
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      return res.status(400).json({ error: 'Credenciais inválidas' });
     }
 
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {

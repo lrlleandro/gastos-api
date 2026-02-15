@@ -54,7 +54,7 @@ router.post('/', async (req, res) => {
     });
     res.json(account);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create account' });
+    res.status(500).json({ error: 'Falha ao criar conta' });
   }
 });
 
@@ -87,7 +87,7 @@ router.get('/', async (req, res) => {
     });
     res.json(accounts);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch accounts' });
+    res.status(500).json({ error: 'Falha ao buscar contas' });
   }
 });
 
@@ -138,7 +138,7 @@ router.put('/:id', async (req, res) => {
     });
 
     if (!existingAccount) {
-      return res.status(404).json({ error: 'Account not found' });
+      return res.status(404).json({ error: 'Conta não encontrada' });
     }
 
     const account = await prisma.account.update({
@@ -147,7 +147,7 @@ router.put('/:id', async (req, res) => {
     });
     res.json(account);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update account' });
+    res.status(500).json({ error: 'Falha ao atualizar conta' });
   }
 });
 
@@ -184,15 +184,15 @@ router.delete('/:id', async (req, res) => {
     });
 
     if (!existingAccount) {
-      return res.status(404).json({ error: 'Account not found' });
+      return res.status(404).json({ error: 'Conta não encontrada' });
     }
 
     await prisma.account.delete({
       where: { id },
     });
-    res.json({ message: 'Account deleted successfully' });
+    res.json({ message: 'Conta deletada com sucesso' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete account' });
+    res.status(500).json({ error: 'Falha ao deletar conta' });
   }
 });
 

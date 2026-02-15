@@ -58,7 +58,7 @@ router.post('/', async (req, res) => {
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create user' });
+    res.status(500).json({ error: 'Falha ao criar usuário' });
   }
 });
 
@@ -87,7 +87,7 @@ router.get('/', async (req, res) => {
     const users = await prisma.user.findMany();
     res.json(users);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch users' });
+    res.status(500).json({ error: 'Falha ao buscar usuários' });
   }
 });
 
@@ -138,7 +138,7 @@ router.put('/:id', async (req, res) => {
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update user' });
+    res.status(500).json({ error: 'Falha ao atualizar usuário' });
   }
 });
 
@@ -169,9 +169,9 @@ router.delete('/:id', async (req, res) => {
     await prisma.user.delete({
       where: { id },
     });
-    res.json({ message: 'User deleted successfully' });
+    res.json({ message: 'Usuário deletado com sucesso' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete user' });
+    res.status(500).json({ error: 'Falha ao deletar usuário' });
   }
 });
 
