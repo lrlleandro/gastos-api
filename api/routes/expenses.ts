@@ -97,6 +97,13 @@ router.post('/', async (req, res) => {
  *     tags: [Expenses]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: accountId
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: ID da conta para filtrar despesas
  *     responses:
  *       200:
  *         description: A lista de despesas
@@ -113,8 +120,15 @@ router.get('/', async (req, res) => {
   try {
     // @ts-ignore
     const userId = req.user.id;
+    const { accountId } = req.query;
+
+    const whereClause: any = { userId };
+    if (accountId) {
+      whereClause.accountId = String(accountId);
+    }
+
     const expenses = await prisma.expense.findMany({
-      where: { userId },
+      where: whereClause,
       include: {
         user: true,
         category: true,
