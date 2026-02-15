@@ -38,7 +38,7 @@ const prisma = new PrismaClient();
  *                 type: number
  *               type:
  *                 type: string
- *                 enum: [INCOME, EXPENSE]
+ *                 enum: [INCOME, EXPENSE, TRANSFER_IN, TRANSFER_OUT]
  *                 default: EXPENSE
  *               date:
  *                 type: string
@@ -75,7 +75,7 @@ router.post('/', async (req, res) => {
       data: {
         description,
         amount,
-        type: type || 'EXPENSE',
+        type: (type || 'EXPENSE').toUpperCase(),
         transactionDate: new Date(date),
         userId,
         categoryId,

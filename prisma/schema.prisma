@@ -43,7 +43,7 @@ model Expense {
   id          String   @id @default(uuid())
   description String
   amount      Float
-  type        String   @default("EXPENSE") // INCOME or EXPENSE
+  type        String   @default("EXPENSE") // INCOME, EXPENSE, TRANSFER_IN, TRANSFER_OUT
   transactionDate DateTime
   createdAt   DateTime @default(now())
   userId      String
