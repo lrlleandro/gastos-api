@@ -59,6 +59,23 @@ router.post('/register', async (req, res) => {
         name,
         email,
         password: hashedPassword,
+        accounts: {
+          create: {
+            name: 'Carteira',
+          },
+        },
+        categories: {
+          create: [
+            { name: 'Alimentação' },
+            { name: 'Transporte' },
+            { name: 'Moradia' },
+            { name: 'Lazer' },
+            { name: 'Saúde' },
+            { name: 'Educação' },
+            { name: 'Salário' },
+            { name: 'Outros' },
+          ],
+        },
       },
     });
 
@@ -101,6 +118,8 @@ router.post('/register', async (req, res) => {
  *               properties:
  *                 token:
  *                   type: string
+ *                 name:
+ *                   type: string
  *       400:
  *         description: Credenciais inválidas
  */
@@ -122,7 +141,7 @@ router.post('/login', async (req, res) => {
       expiresIn: '1h',
     });
 
-    res.json({ token });
+    res.json({ token, name: user.name });
   } catch (error) {
     res.status(500).json({ error: 'Failed to login' });
   }
