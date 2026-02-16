@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
+import axios from 'axios';
+import FormData from 'form-data';
 import { uploadReceipt, deleteReceipt, downloadReceipt } from '../services/storage';
 
 const router = Router();
@@ -13,6 +15,171 @@ const upload = multer({ storage: multer.memoryStorage() });
  *   name: Expenses
  *   description: API para gerenciamento de despesas
  */
+
+/**
+ * @swagger
+ * /expenses/extract-pdf:
+ *   post:
+ *     summary: Importa transações de um extrato PDF
+ *     tags: [Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *               - accountId
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Arquivo PDF do extrato
+ *               accountId:
+ *                 type: string
+ *                 description: ID da conta para associar as transações
+ *               categoryId:
+ *                 type: string
+ *                 description: ID da categoria padrão (opcional)
+ *     responses:
+ *       200:
+ *         description: Transações importadas com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 count:
+ *                   type: number
+ *       400:
+ *         description: Arquivo ou conta não fornecidos
+ *       500:
+ *         description: Erro no servidor
+ */
+router.post('/extract-pdf', upload.single('file'), async (req, res) => {
+  try {
+    const file = req.file;
+    const { accountId, categoryId } = req.body;
+    // @ts-ignore
+    const userId = req.user.id;
+
+    if (!file) {
+      return res.status(400).json({ error: 'Arquivo PDF não fornecido' });
+    }
+
+    if (!accountId) {
+      return res.status(400).json({ error: 'ID da conta é obrigatório' });
+    }
+
+    // Verify account ownership
+    const account = await prisma.account.findFirst({
+      where: { id: accountId, userId },
+    });
+
+    if (!account) {
+      return res.status(400).json({ error: 'Conta inválida ou sem permissão' });
+    }
+
+    // Verify category if provided
+    if (categoryId) {
+      const category = await prisma.category.findFirst({
+        where: { id: categoryId, userId },
+      });
+      if (!category) {
+        return res.status(400).json({ error: 'Categoria inválida ou sem permissão' });
+      }
+    }
+
+    // Send to external parser API
+    const formData = new FormData();
+    formData.append('file', file.buffer, file.originalname);
+
+    const parserResponse = await axios.post(
+      'https://extratoparser-production.up.railway.app/parse',
+      formData,
+      {
+        headers: {
+          ...formData.getHeaders(),
+          'X-API-Key': 'eQ5RFVGvQ8KkhWRqy3fKpYnQhtF8sFuE',
+          'Accept': 'application/json',
+        },
+      }
+    );
+
+    const transactions = parserResponse.data;
+
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+      return res.json({ message: 'Nenhuma transação encontrada no extrato', count: 0 });
+    }
+
+    // Prepare transactions for creation
+    let netBalanceChange = 0;
+    const expenseCreates = transactions.map((t: any) => {
+      const amount = parseFloat(t.amount);
+      const isIncome = amount >= 0;
+      const absAmount = Math.abs(amount);
+      
+      netBalanceChange += amount;
+
+      return {
+        description: t.description,
+        amount: absAmount,
+        type: isIncome ? 'INCOME' : 'EXPENSE',
+        transactionDate: new Date(t.date),
+        userId,
+        categoryId: categoryId || undefined, // Use provided category or let it fail if schema requires it? 
+        // Schema requires categoryId. If not provided, we need a fallback or fail.
+        // Let's check if we can set a default or if we should require it.
+        // The user didn't specify behavior for category. 
+        // If categoryId is missing, we can try to find a "General" category or just fail.
+        // For now, let's assume categoryId is passed or we pick the first one available?
+        // Better: require categoryId in the request or handle it. 
+        // The schema.prisma says categoryId is required.
+        accountId,
+      };
+    });
+    
+    // If categoryId is not provided, we need to handle it.
+    // Let's try to find a default category if not provided
+    if (!categoryId) {
+       // Find the first category of the user to use as default fallback
+       const defaultCategory = await prisma.category.findFirst({ where: { userId } });
+       if (!defaultCategory) {
+         return res.status(400).json({ error: 'Nenhuma categoria encontrada para associar. Crie uma categoria primeiro ou forneça um ID.' });
+       }
+       expenseCreates.forEach((e: any) => e.categoryId = defaultCategory.id);
+    }
+
+    // Execute transaction
+    await prisma.$transaction([
+      prisma.expense.createMany({
+        data: expenseCreates,
+      }),
+      prisma.account.update({
+        where: { id: accountId },
+        data: {
+          currentBalance: {
+            increment: netBalanceChange,
+          },
+        },
+      }),
+    ]);
+
+    res.json({
+      message: 'Transações importadas com sucesso',
+      count: transactions.length,
+    });
+
+  } catch (error) {
+    console.error('Error processing extract:', error);
+    res.status(500).json({ error: 'Falha ao processar extrato' });
+  }
+});
 
 /**
  * @swagger
