@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import { OAuth2Client } from 'google-auth-library';
+import categoriesData from '../categories.json';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -85,17 +86,7 @@ router.post('/register', async (req, res) => {
           },
         },
         categories: {
-          create: [
-            { name: 'Alimentação' },
-            { name: 'Transporte' },
-            { name: 'Moradia' },
-            { name: 'Lazer' },
-            { name: 'Saúde' },
-            { name: 'Educação' },
-            { name: 'Salário' },
-            { name: 'Outros' },
-            { name: 'Transferência' },
-          ],
+          create: categoriesData.categories.map((name: string) => ({ name })),
         },
       },
     });
@@ -348,17 +339,7 @@ router.post('/google', async (req, res) => {
             },
           },
           categories: {
-            create: [
-              { name: 'Alimentação' },
-              { name: 'Transporte' },
-              { name: 'Moradia' },
-              { name: 'Lazer' },
-              { name: 'Saúde' },
-              { name: 'Educação' },
-              { name: 'Salário' },
-              { name: 'Outros' },
-              { name: 'Transferência' },
-            ],
+            create: categoriesData.categories.map((name: string) => ({ name })),
           },
         },
       });
