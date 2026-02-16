@@ -236,10 +236,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Credenciais inválidas' });
     }
 
-    if (!user.isVerified) {
-      return res.status(403).json({ error: 'E-mail não verificado. Por favor, verifique sua caixa de entrada.' });
-    }
-
+    
     if (!user.password) {
       return res.status(400).json({ error: 'Este usuário utiliza login social (Google). Por favor, faça login via Google.' });
     }

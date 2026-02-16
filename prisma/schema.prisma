@@ -60,5 +60,4 @@ model Expense {
   category    Category @relation(fields: [categoryId], references: [id])
   accountId   String
   account     Account  @relation(fields: [accountId], references: [id])
-  receiptUrl  String?
 }
